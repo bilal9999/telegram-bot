@@ -1,0 +1,81 @@
+import asyncio
+import re
+import unicodedata
+from pyrogram import Client, filters
+
+# ✅ بيانات البوت
+api_id = 14517234
+api_hash = 'f72e8404a1842f443db36a4ea0c281db'
+bot_token = "7626331564:AAGm4dI5HREsy6l9gLS01cTcetFS8JixdGE"
+
+# ✅ بيانات القناة والمجموعة (لو حبيت تستخدمهم لاحقًا)
+group_username = "@aaaaaac8"
+channel_username = "@kim5o11"
+message_id_to_forward = 4  # رقم الرسالة للتحويل (حاليًا مش مستخدم في الكود)
+
+# ✅ النصوص اللي يبحث فيها البوت
+raw_text = """
+{ صَدَقَ اللّهُ الْعَظِيمِ }
+"""
+
+# ✅ وظيفة التنظيف للنص
+def normalize(text):
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = text.replace('ـ', '')
+    return text
+
+# ✅ تجهيز النصوص
+original_lines = [line.strip() for line in raw_text.strip().splitlines() if line.strip()]
+normalized_lines = [normalize(line) for line in original_lines]
+
+# ✅ إعداد البوت
+app = Client(
+    "bot",
+    api_id=api_id,
+    api_hash=api_hash,
+    bot_token=bot_token
+)
+
+# ✅ وظيفة البحث والرد
+@app.on_message(filters.group & filters.text)
+async def search_handler(client, message):
+    text = message.text.strip()
+
+    if not text.startswith("بحث"):
+        return
+
+    query = text[4:].strip()
+    word_count = len(query.split())
+
+    if word_count == 0:
+        await message.reply("❌ اكتب كلمة أو أكثر بعد كلمة بحث.")
+        return
+
+    normalized_query = normalize(query)
+
+    results = []
+    for i, norm_line in enumerate(normalized_lines):
+        if normalized_query in norm_line:
+            results.append(original_lines[i])
+
+    if len(results) == 0:
+        await message.reply("❌ لا يوجد سطر يحتوي على هذا النص.")
+    elif len(results) > 7:
+        if word_count == 1:
+            await message.reply("❗ الكلمة ظهرت كثيرًا، الرجاء البحث بكلمتين أو أكثر لتقليل النتائج.")
+        elif word_count == 2:
+            await message.reply("❗ الكلمتين ظهروا كثيرًا، الرجاء البحث بثلاث كلمات أو أكثر للتقليل.")
+        else:
+            await message.reply("❗ حتى مع ثلاث كلمات النتائج كثيرة، الرجاء تحديد أكثر بكلامك.")
+    else:
+        await message.reply('\n'.join(results))
+
+# ✅ تشغيل البوت
+async def main():
+    await app.start()
+    print("✅ البوت يعمل الآن ويستمع للرسائل...")
+    await asyncio.Event().wait()
+
+if __name__ == "__main__":
+    asyncio.run(main())
